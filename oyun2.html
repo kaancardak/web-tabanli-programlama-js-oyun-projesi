@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uzay Gemisi Oyunu</title>
+<style>
+    canvas {
+        border: 1px solid #d3d3d3;
+        background-color: #f1f1f1;
+    }
+    .a {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .controls-img {
+        position: absolute;
+        top: 900px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    body {
+        background-color: #2c2c2c;
+        margin: 0;
+    }
+</style>
+</head>
+<body>
+    <!-- Oyun Ekranı -->
+    <div class="a">
+        <canvas id="gameCanvas" width="1600" height="890"></canvas>
+        <img src="start-button.png" id="startButton" onclick="startGame()"
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); cursor: pointer; display: block;">
+        <img src="controls.png" class="controls-img" alt="Controls">
+    </div>
+
+    <script>
+        // Canvas ve context oluşturma
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Arka planın hareketi için değişkenler
+        let backgroundX = 0;
+        const backgroundSpeed = 3; // Arka planın hızı
+
+        // Yıldızlar için bir dizi oluşturduk
+        const stars = [];
+
+        // Yıldız oluşturma fonksiyonu
+        function createStar() {
+            const star = {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 3 + 1, // Rastgele boyut
+                alpha: Math.random(), // Rastgele saydamlık
+            };
+            stars.push(star);
+        }
+
+        // Yıldızları oluşturma
+        for (let i = 0; i < 100; i++) {
+            createStar();
+        }
+
+        // Uzay gemisi resmi ekleme
+        const spaceshipImage = new Image();
+        spaceshipImage.src = "spaceship.png";
+
+        // Uzay gemisi özellikleri
+        const spaceship = {
+            x: canvas.width - 1470,
+            y: canvas.height / 2 - 50,
+            width: 100,
+            height: 100,
+            speed: 8,
+            boost: false,
+        };
+
+        const bullet = {
+            x: spaceship.x + spaceship.width - 10, // Mermi uzay gemisinin ortasından çıkacak
+            y: spaceship.y + spaceship.height / 2 - 2,
+            width: 20,
+            height: 3,
+            speed: 20, // Mermi hızı
+            color: "red", // Mermi rengi
+            active: false, // Mermi aktif mi?
+        };
+
+        // Space tuşuna basıldığında mermiyi ateşler
+        document.addEventListener("keydown", (e) => {
+            if (e.key === " ") { // Space tuşuyla ateş ediliyor
+                if (!bullet.active) {
+                    bullet.x = spaceship.x + spaceship.width / 2;
+                    bullet.y = spaceship.y + spaceship.height / 2;
+                    bullet.active = true;
+                }
+            }
+        });
+
+        let gameStarted = false; // Oyun başladı mı?
+
+        // Asteroidleri oluşturma zamanlayıcısı
+        let asteroidTimer = null;
+
+        function startGame() {
+            gameStarted = true;
+            document.getElementById("startButton").style.display = "none"; // Başlama butonunu gizle
+            resetBullet(); // Mermiyi sıfırla
+            asteroidTimer = setInterval(createAsteroid, 1000); // Zamanlayıcıyı başlat
+
+            // Skoru sıfırla ve artış zamanlayıcısını başlat
+            score = 0;
+            scoreInterval = setInterval(increaseScore, 2000); // 2 saniyede bir skoru arttır
+        }
+
+        function stopGame() {
+            clearInterval(asteroidTimer); // Asteroid oluşturma zamanlayıcısını durdur
+            clearInterval(scoreInterval); // Skor artışı zamanlayıcısını durdur
+            gameStarted = false;
+        }
+
+        // Mermiyi sıfırlama fonksiyonu
+        function resetBullet() {
+            bullet.active = false;
+            bullet.x = spaceship.x + spaceship.width / 2;
+            bullet.y = spaceship.y + spaceship.height / 2;
+        }
+
+        const asteroidImages = [];
+        const asteroidImagePaths = ["asteroid1.png", "asteroid2.png", "asteroid3.png", "asteroid4.png"];
+
+        // Asteroid resimlerini yükle
+        for (const path of asteroidImagePaths) {
+            const asteroidImage = new Image();
+            asteroidImage.src = path;
+            asteroidImages.push(asteroidImage);
+        }
+
+        // Asteroid oluşturma fonksiyonu
+        function createAsteroid() {
+            const originalWidth = asteroidImages[0].width; // Örneğin ilk asteroidin genişliğini alıyoruz
+            const originalHeight = asteroidImages[0].height; // Örneğin ilk asteroidin yüksekliğini alıyoruz
+            const scaleRatio = 0.1; // 1/10 boyut oranı
+
+            const asteroid = {
+                image: asteroidImages[Math.floor(Math.random() * asteroidImages.length)],
+                x: canvas.width + Math.random() * 1000, // Sağdan gelmeli, bu yüzden genişlik ekleyelim
+                y: Math.random() * canvas.height,
+                width: originalWidth * scaleRatio, // Genişliği küçült
+                height: originalHeight * scaleRatio,
+                speed: Math.random() * 2 + 1, // Rastgele hız
+            };
+            asteroids.push(asteroid);
+            // Maksimum asteroid sayısını kontrol et
+            if (asteroids.length > 10) {
+                asteroids.shift(); // En eski asteroidi kaldır
+            }
+        }
+
+        // Asteroidler için bir dizi
+        const asteroids = [];
+
+        // Uzay gemisi ve asteroidler arasındaki çarpışmayı kontrol etme
+        function checkCollisions() {
+            for (const asteroid of asteroids) {
+                // Uzay gemisi ve asteroid arasındaki mesafeyi hesapla
+                const dx = spaceship.x + spaceship.width / 2 - (asteroid.x + asteroid.width / 2);
+                const dy = spaceship.y + spaceship.height / 2 - (asteroid.y + asteroid.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Çarpışma kontrolü
+                if (distance < spaceship.width / 2 + asteroid.width / 2) {
+                    stopGame(); // Oyunu durdur
+                    alert("Oyun Bitti! Skor: " + score); // Skoru göster
+                    break; // Döngüyü durdur
+                }
+            }
+        }
+
+        // Mermi ve asteroidler arasındaki çarpışmayı kontrol etme
+        function checkBulletCollisions() {
+            for (let i = 0; i < asteroids.length; i++) {
+                const asteroid = asteroids[i];
+                if (bullet.active &&
+                    bullet.x < asteroid.x + asteroid.width &&
+                    bullet.x + bullet.width > asteroid.x &&
+                    bullet.y < asteroid.y + asteroid.height &&
+                    bullet.y + bullet.height > asteroid.y) {
+                    // Mermi ve asteroid çarpıştı
+                    bullet.active = false; // Mermiyi devre dışı bırak
+                    asteroids.splice(i, 1); // Asteroidi listeden kaldır
+                    addScore(3); // Skoru arttır
+                }
+            }
+        }
+
+        let score = 0; // Skor değişkeni
+        let scoreInterval = null; // Skor artışı zamanlayıcısı
+
+        // Skoru arttırma fonksiyonu
+        function addScore(points) {
+            score += points;
+        }
+
+        // Skoru ekrana yazdırma
+        function drawScore() {
+            ctx.font = "24px Arial";
+            ctx.fillStyle = "white";
+            ctx.fillText("Score: " + score, 10, 30);
+        }
+
+        // Skoru artıran fonksiyon
+        function increaseScore() {
+            addScore(1); // Skoru 1 arttır
+        }
+
+        // Uzay gemisinin sınırları kontrol etme
+        function checkBoundaries() {
+            if (spaceship.x < 0) {
+                spaceship.x = 0;
+            }
+            if (spaceship.x + spaceship.width > canvas.width) {
+                spaceship.x = canvas.width - spaceship.width;
+            }
+            if (spaceship.y < 0) {
+                spaceship.y = 0;
+            }
+            if (spaceship.y + spaceship.height > canvas.height) {
+                spaceship.y = canvas.height - spaceship.height;
+            }
+        }
+
+        // Ana oyun döngüsü
+        function gameLoop() {
+            // Uzay gemisinin sınırlarını kontrol et
+            checkBoundaries();
+
+            // Uzay gemisini hareket ettir
+            if (gameStarted && keys.w) {
+                spaceship.y -= spaceship.speed;
+            }
+            if (gameStarted && keys.s) {
+                spaceship.y += spaceship.speed;
+            }
+            if (gameStarted && keys.a) {
+                spaceship.x -= spaceship.speed;
+            }
+            if (gameStarted && keys.d) {
+                spaceship.x += spaceship.speed;
+            }
+
+            // Arka planı hareket ettir
+            backgroundX -= backgroundSpeed;
+            if (backgroundX < -canvas.width) {
+                backgroundX = 0;
+            }
+
+            // Yıldızları hareket ettir
+            for (const star of stars) {
+                star.x -= backgroundSpeed; // Yıldızlar arka planla aynı hızda kaymalı
+                if (star.x < 0) {
+                    star.x = canvas.width; // Yıldızlar ekran dışına çıktığında tekrar sağdan başlat
+                }
+            }
+
+            // Oyunu yeniden çiz
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Arka planı çiz
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Uzay gemisi, asteroidler, düşmanlar ve diğer nesneleri çiz
+            // Yıldızları çiz
+            for (const star of stars) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Mermiyi hareket ettir
+            if (gameStarted && bullet.active) {
+                bullet.x += bullet.speed;
+                if (bullet.x > canvas.width) {
+                    bullet.active = false; // Mermi ekranın dışına çıktığında devre dışı bırak
+                }
+            }
+
+            // Uzay gemisini ve mermiyi çiz
+            ctx.drawImage(spaceshipImage, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
+            if (bullet.active) {
+                ctx.fillStyle = bullet.color;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            }
+
+            // Asteroidleri hareket ettir
+            moveAsteroids(); // Asteroidleri hareket ettir
+            drawAsteroids(); // Asteroidleri çiz
+
+            checkCollisions(); // Çarpışmaları kontrol et
+            checkBulletCollisions(); // Mermi-asteroid çarpışmalarını kontrol et
+            drawScore(); // Skoru çiz
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Asteroidleri hareket ettirme
+        function moveAsteroids() {
+            for (const asteroid of asteroids) {
+                asteroid.x -= backgroundSpeed + asteroid.speed; // Arka planla aynı hızda kaydır
+                if (asteroid.x < -asteroid.image.width) {
+                    // Asteroid ekranın dışına çıktığında yeniden oluştur
+                    asteroid.x = canvas.width + Math.random() * 1000;
+                    asteroid.y = Math.random() * canvas.height;
+                    asteroid.speed = Math.random() * 2 + 1; // Yeniden rastgele hız ata
+                }
+            }
+        }
+
+        // Asteroidleri çizme
+        function drawAsteroids() {
+            for (const asteroid of asteroids) {
+                ctx.drawImage(asteroid.image, asteroid.x, asteroid.y, asteroid.width, asteroid.height);
+            }
+        }
+
+        // Klavye tuşlarına basıldığında hareketi takip etmek için bir nesne
+        const keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false,
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+        };
+
+        // Klavye tuşlarına basıldığında tetiklenen olay dinleyicileri
+        document.addEventListener("keydown", (e) => {
+            keys[e.key] = true;
+        });
+
+        document.addEventListener("keyup", (e) => {
+            keys[e.key] = false;
+        });
+
+        // Oyunu başlat
+        gameLoop();
+    </script>
+</body>
+</html>
